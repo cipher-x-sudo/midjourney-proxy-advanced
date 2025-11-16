@@ -21,6 +21,7 @@ export interface DiscordService {
   sendImageMessage(content: string, finalFileName: string): Promise<Message<string>>;
   reactWithEmoji(messageId: string, channelId: string, emoji: string): Promise<Message<void>>;
   removeOwnReaction(messageId: string, channelId: string, emoji: string): Promise<Message<void>>;
+  customComponent(messageId: string, messageFlags: number, customId: string, nonce: string): Promise<Message<void>>;
 }
 
 /**
@@ -217,6 +218,29 @@ export class DiscordServiceImpl implements DiscordService {
     params.data.options = options;
     params.data.attachments = attachments;
     return this.postJsonAndCheckStatus(JSON.stringify(params));
+  }
+
+  async customComponent(messageId: string, messageFlags: number, customId: string, nonce: string): Promise<Message<void>> {
+    try {
+      const payload = {
+        type: 3,
+        nonce: nonce,
+        guild_id: this.account.guildId || '',
+        channel_id: this.account.channelId || '',
+        message_flags: messageFlags || 0,
+        message_id: messageId,
+        application_id: '936929561302675456',
+        session_id: this.getSessionId(),
+        data: {
+          component_type: 2,
+          custom_id: customId,
+        },
+      };
+      return this.postJsonAndCheckStatus(JSON.stringify(payload));
+    } catch (error: any) {
+      console.error('Failed to send custom component interaction:', error);
+      return Message.failureWithDescription<void>(error.message);
+    }
   }
 
   async upload(fileName: string, dataUrl: DataUrl): Promise<Message<string>> {

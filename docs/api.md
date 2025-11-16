@@ -137,3 +137,37 @@ POST  application/json
   }
 }
 ```
+
+## 6. 新增图像动作接口
+
+所有接口需携带鉴权头：`mj-api-secret`（若已配置），提交返回同前文“任务提交返回”。
+
+- POST `/mj/submit/upsample-2x`
+```json
+{ "taskId": "t123", "index": 1, "mode": "subtle", "state": "s", "notifyHook": "https://..." }
+```
+
+- POST `/mj/submit/variation-strength`
+```json
+{ "taskId": "t123", "index": 1, "level": "low" }
+```
+
+- POST `/mj/submit/pan`
+```json
+{ "taskId": "t123", "index": 1, "direction": "left" }
+```
+
+- POST `/mj/submit/outpaint`
+```json
+{ "taskId": "t123", "index": 1, "percent": 75, "prompt": "optional" }
+```
+
+- POST `/mj/submit/animate`
+```json
+{ "taskId": "t123", "index": 1, "quality": "high" }
+```
+
+- POST `/mj/submit/inpaint`
+```json
+{ "taskId": "t123", "index": 1, "maskBase64": "data:image/png;base64,...", "prompt": "optional" }
+```

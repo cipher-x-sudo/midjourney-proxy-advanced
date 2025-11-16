@@ -36,6 +36,9 @@ export interface DiscordInstance {
   reactWithEmoji(messageId: string, channelId: string, emoji: string): Promise<Message<void>>;
   removeOwnReaction(messageId: string, channelId: string, emoji: string): Promise<Message<void>>;
 
+  // Generic component interaction
+  customComponent(messageId: string, messageFlags: number, customId: string, nonce: string): Promise<Message<void>>;
+
   // Connection status
   getConnectionStatus(): {
     connected: boolean;

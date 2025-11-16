@@ -21,15 +21,14 @@ Proxy the Discord channel for MidJourney to enable API-based calls for AI drawin
 - [x] Prompt sensitive word pre-detection, supports override adjustment
 - [x] User-token connects to WSS (WebSocket Secure), allowing access to error messages and full functionality
 - [x] Supports multi-account configuration, with each account able to set up corresponding task queues
+- [x] Supports Shorten (prompt analysis) command
+- [x] Supports retrieving the seed value of images
 
 **🚀 For more features, please refer to [midjourney-proxy-plus](https://github.com/litter-coder/midjourney-proxy-plus)**
-> - [x] Supports all the features of the open-source version
-> - [x] Supports Shorten (prompt analysis) command
 > - [x] Supports focus shifting: Pan ⬅️ ➡️ ⬆️ ⬇️
 > - [x] Supports image zooming: Zoom 🔍
 > - [x] Supports local redrawing: Vary (Region) 🖌
 > - [x] Supports nearly all associated button actions and the 🎛️ Remix mode
-> - [x] Supports retrieving the seed value of images
 > - [x] Account pool persistence, dynamic maintenance
 > - [x] Supports retrieving account /info and /settings information
 > - [x] Account settings configuration

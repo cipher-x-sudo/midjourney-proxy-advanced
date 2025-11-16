@@ -147,6 +147,43 @@ export async function createApp(): Promise<FastifyInstance> {
     return submitController.blend(request as any, reply);
   });
 
+  // New image action routes
+  app.post(`${apiPrefix}/submit/upsample-2x`, {
+    preHandler: authMiddleware,
+  }, async (request, reply) => {
+    return submitController.upsample2x(request as any, reply);
+  });
+
+  app.post(`${apiPrefix}/submit/variation-strength`, {
+    preHandler: authMiddleware,
+  }, async (request, reply) => {
+    return submitController.variationStrength(request as any, reply);
+  });
+
+  app.post(`${apiPrefix}/submit/pan`, {
+    preHandler: authMiddleware,
+  }, async (request, reply) => {
+    return submitController.pan(request as any, reply);
+  });
+
+  app.post(`${apiPrefix}/submit/outpaint`, {
+    preHandler: authMiddleware,
+  }, async (request, reply) => {
+    return submitController.outpaint(request as any, reply);
+  });
+
+  app.post(`${apiPrefix}/submit/animate`, {
+    preHandler: authMiddleware,
+  }, async (request, reply) => {
+    return submitController.animate(request as any, reply);
+  });
+
+  app.post(`${apiPrefix}/submit/inpaint`, {
+    preHandler: authMiddleware,
+  }, async (request, reply) => {
+    return submitController.inpaint(request as any, reply);
+  });
+
   // Task routes
   app.get(`${apiPrefix}/task/:id/fetch`, {
     preHandler: authMiddleware,
