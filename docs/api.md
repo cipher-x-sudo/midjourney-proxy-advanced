@@ -138,36 +138,18 @@ POST  application/json
 }
 ```
 
-## 6. 新增图像动作接口
+## 6. 图像动作（统一为 Action + Modal）
 
 所有接口需携带鉴权头：`mj-api-secret`（若已配置），提交返回同前文“任务提交返回”。
 
-- POST `/mj/submit/upsample-2x`
+- POST `/mj/submit/action`
 ```json
-{ "taskId": "t123", "index": 1, "mode": "subtle", "state": "s", "notifyHook": "https://..." }
+{ "taskId": "t123", "customId": "MJ::JOB::pan_left::1::<hash>::SOLO" }
 ```
+说明：将 MidJourney 按钮的 `customId` 原样提交（pan/zoom/outpaint/variation/reroll/upsample/animate 等）。
 
-- POST `/mj/submit/variation-strength`
+- POST `/mj/submit/modal`
 ```json
-{ "taskId": "t123", "index": 1, "level": "low" }
+{ "taskId": "t123", "maskBase64": "data:image/png;base64,...", "prompt": "optional" }
 ```
-
-- POST `/mj/submit/pan`
-```json
-{ "taskId": "t123", "index": 1, "direction": "left" }
-```
-
-- POST `/mj/submit/outpaint`
-```json
-{ "taskId": "t123", "index": 1, "percent": 75, "prompt": "optional" }
-```
-
-- POST `/mj/submit/animate`
-```json
-{ "taskId": "t123", "index": 1, "quality": "high" }
-```
-
-- POST `/mj/submit/inpaint`
-```json
-{ "taskId": "t123", "index": 1, "maskBase64": "data:image/png;base64,...", "prompt": "optional" }
-```
+说明：用于 Inpaint/Vary(Region) 等需要后续参数时的跟进请求。当前实现会上传 `maskBase64` 并携带可选 `prompt` 作为消息内容发送。

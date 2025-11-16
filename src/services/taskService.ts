@@ -23,12 +23,8 @@ export interface TaskService {
   submitBlend(task: Task, dataUrls: DataUrl[], dimensions: BlendDimensions): Promise<SubmitResultVO>;
 
   // New image actions via custom components
-  submitUpsample2x(task: Task, targetMessageId: string, targetMessageHash: string, index: number, mode: 'subtle'|'creative', messageFlags: number): Promise<SubmitResultVO>;
-  submitVariationStrength(task: Task, targetMessageId: string, targetMessageHash: string, index: number, level: 'low'|'high', messageFlags: number): Promise<SubmitResultVO>;
-  submitPan(task: Task, targetMessageId: string, targetMessageHash: string, index: number, direction: 'left'|'right'|'up'|'down', messageFlags: number): Promise<SubmitResultVO>;
-  submitOutpaint(task: Task, targetMessageId: string, targetMessageHash: string, index: number, percent: 50|75, messageFlags: number): Promise<SubmitResultVO>;
-  submitAnimate(task: Task, targetMessageId: string, targetMessageHash: string, index: number, quality: 'low'|'high', messageFlags: number): Promise<SubmitResultVO>;
-  submitInpaint(task: Task, targetMessageId: string, targetMessageHash: string, index: number, messageFlags: number, maskDataUrl: DataUrl, prompt?: string): Promise<SubmitResultVO>;
+  submitCustomComponent(task: Task, targetMessageId: string, targetMessageHash: string, customId: string, messageFlags: number): Promise<SubmitResultVO>;
+  submitModal(task: Task, maskDataUrl?: DataUrl, prompt?: string): Promise<SubmitResultVO>;
 }
 
 /**
@@ -199,90 +195,46 @@ export class TaskServiceImpl implements TaskService {
     return discordInstance;
   }
 
-  async submitUpsample2x(task: Task, targetMessageId: string, targetMessageHash: string, index: number, mode: 'subtle'|'creative', messageFlags: number): Promise<SubmitResultVO> {
+  // Removed specialized submit* methods in favor of generic custom component and modal
+
+  async submitCustomComponent(task: Task, targetMessageId: string, targetMessageHash: string, customId: string, messageFlags: number): Promise<SubmitResultVO> {
     const discordInstance = this.getInstanceOrFail(task);
     if (!discordInstance) {
       const instanceId = task.getProperty(TASK_PROPERTY_DISCORD_INSTANCE_ID);
       return SubmitResultVO.fail(ReturnCode.NOT_FOUND, `Account unavailable: ${instanceId}`);
     }
-    const customId = `MJ::JOB::upsample_v7_2x_${mode}::${index}::${targetMessageHash}::SOLO`;
     const nonce = task.getProperty(TASK_PROPERTY_NONCE);
-    return discordInstance.submitTask(task, () => discordInstance.customComponent(targetMessageId, messageFlags, customId, nonce || ''));
+    // If customId lacks message hash placeholder, use as-is
+    const finalCustomId = customId.includes(targetMessageHash) ? customId : customId;
+    return discordInstance.submitTask(task, () => discordInstance.customComponent(targetMessageId, messageFlags, finalCustomId, nonce || ''));
   }
 
-  async submitVariationStrength(task: Task, targetMessageId: string, targetMessageHash: string, index: number, level: 'low'|'high', messageFlags: number): Promise<SubmitResultVO> {
+  async submitModal(task: Task, maskDataUrl?: DataUrl, prompt?: string): Promise<SubmitResultVO> {
     const discordInstance = this.getInstanceOrFail(task);
     if (!discordInstance) {
       const instanceId = task.getProperty(TASK_PROPERTY_DISCORD_INSTANCE_ID);
       return SubmitResultVO.fail(ReturnCode.NOT_FOUND, `Account unavailable: ${instanceId}`);
     }
-    const customId = `MJ::JOB::${level}_variation::${index}::${targetMessageHash}::SOLO`;
-    const nonce = task.getProperty(TASK_PROPERTY_NONCE);
-    return discordInstance.submitTask(task, () => discordInstance.customComponent(targetMessageId, messageFlags, customId, nonce || ''));
-  }
-
-  async submitPan(task: Task, targetMessageId: string, targetMessageHash: string, index: number, direction: 'left'|'right'|'up'|'down', messageFlags: number): Promise<SubmitResultVO> {
-    const discordInstance = this.getInstanceOrFail(task);
-    if (!discordInstance) {
-      const instanceId = task.getProperty(TASK_PROPERTY_DISCORD_INSTANCE_ID);
-      return SubmitResultVO.fail(ReturnCode.NOT_FOUND, `Account unavailable: ${instanceId}`);
-    }
-    const customId = `MJ::JOB::pan_${direction}::${index}::${targetMessageHash}::SOLO`;
-    const nonce = task.getProperty(TASK_PROPERTY_NONCE);
-    return discordInstance.submitTask(task, () => discordInstance.customComponent(targetMessageId, messageFlags, customId, nonce || ''));
-  }
-
-  async submitOutpaint(task: Task, targetMessageId: string, targetMessageHash: string, index: number, percent: 50|75, messageFlags: number): Promise<SubmitResultVO> {
-    const discordInstance = this.getInstanceOrFail(task);
-    if (!discordInstance) {
-      const instanceId = task.getProperty(TASK_PROPERTY_DISCORD_INSTANCE_ID);
-      return SubmitResultVO.fail(ReturnCode.NOT_FOUND, `Account unavailable: ${instanceId}`);
-    }
-    const customId = `MJ::Outpaint::${percent}::${index}::${targetMessageHash}::SOLO`;
-    const nonce = task.getProperty(TASK_PROPERTY_NONCE);
-    return discordInstance.submitTask(task, () => discordInstance.customComponent(targetMessageId, messageFlags, customId, nonce || ''));
-  }
-
-  async submitAnimate(task: Task, targetMessageId: string, targetMessageHash: string, index: number, quality: 'low'|'high', messageFlags: number): Promise<SubmitResultVO> {
-    const discordInstance = this.getInstanceOrFail(task);
-    if (!discordInstance) {
-      const instanceId = task.getProperty(TASK_PROPERTY_DISCORD_INSTANCE_ID);
-      return SubmitResultVO.fail(ReturnCode.NOT_FOUND, `Account unavailable: ${instanceId}`);
-    }
-    const customId = `MJ::JOB::animate_${quality}::${index}::${targetMessageHash}::SOLO`;
-    const nonce = task.getProperty(TASK_PROPERTY_NONCE);
-    return discordInstance.submitTask(task, () => discordInstance.customComponent(targetMessageId, messageFlags, customId, nonce || ''));
-  }
-
-  async submitInpaint(task: Task, targetMessageId: string, targetMessageHash: string, index: number, messageFlags: number, maskDataUrl: DataUrl, prompt?: string): Promise<SubmitResultVO> {
-    const discordInstance = this.getInstanceOrFail(task);
-    if (!discordInstance) {
-      const instanceId = task.getProperty(TASK_PROPERTY_DISCORD_INSTANCE_ID);
-      return SubmitResultVO.fail(ReturnCode.NOT_FOUND, `Account unavailable: ${instanceId}`);
-    }
-    const customId = `MJ::Inpaint::${index}::${targetMessageHash}::SOLO`;
     const nonce = task.getProperty(TASK_PROPERTY_NONCE);
 
     return discordInstance.submitTask(task, async () => {
-      // Step 1: trigger Inpaint button
-      const pressResult = await discordInstance.customComponent(targetMessageId, messageFlags, customId, nonce || '');
-      if (pressResult.getCode() !== ReturnCode.SUCCESS) {
-        return pressResult;
+      // If a mask is provided, upload it and send as image message with prompt as content
+      if (maskDataUrl) {
+        const fileName = `${task.id}.png`;
+        const uploadResult = await discordInstance.upload(fileName, maskDataUrl);
+        if (uploadResult.getCode() !== ReturnCode.SUCCESS) {
+          return Message.of(uploadResult.getCode(), uploadResult.getDescription());
+        }
+        const finalFileName = uploadResult.getResult()!;
+        const content = (prompt && prompt.trim()) ? prompt.trim() : 'mask';
+        const sendResult = await discordInstance.sendImageMessage(content, finalFileName);
+        if (sendResult.getCode() !== ReturnCode.SUCCESS) {
+          return Message.of(sendResult.getCode(), sendResult.getDescription());
+        }
+        return Message.success<void>();
       }
-      // Step 2: upload mask image
-      const fileName = `${task.id}.png`;
-      const uploadResult = await discordInstance.upload(fileName, maskDataUrl);
-      if (uploadResult.getCode() !== ReturnCode.SUCCESS) {
-        return Message.of(uploadResult.getCode(), uploadResult.getDescription());
-      }
-      const finalFileName = uploadResult.getResult()!;
-      // Step 3: send mask as message with optional prompt text (acts like user action)
-      const content = (prompt && prompt.trim()) ? prompt.trim() : 'mask';
-      const sendResult = await discordInstance.sendImageMessage(content, finalFileName);
-      if (sendResult.getCode() !== ReturnCode.SUCCESS) {
-        return Message.of(sendResult.getCode(), sendResult.getDescription());
-      }
-      return Message.success<void>();
+      // Otherwise, modal prompt-only not supported with current template
+      return Message.failureWithDescription<void>('modal prompt-only is not supported');
     });
   }
 }

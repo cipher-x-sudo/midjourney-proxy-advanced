@@ -10,12 +10,9 @@ import { SubmitSimpleChangeDTO } from '../dto/SubmitSimpleChangeDTO';
 import { SubmitDescribeDTO } from '../dto/SubmitDescribeDTO';
 import { SubmitShortenDTO } from '../dto/SubmitShortenDTO';
 import { SubmitBlendDTO } from '../dto/SubmitBlendDTO';
-import { SubmitUpsample2xDTO } from '../dto/SubmitUpsample2xDTO';
-import { SubmitVariationStrengthDTO } from '../dto/SubmitVariationStrengthDTO';
-import { SubmitInpaintDTO } from '../dto/SubmitInpaintDTO';
-import { SubmitOutpaintDTO } from '../dto/SubmitOutpaintDTO';
-import { SubmitPanDTO } from '../dto/SubmitPanDTO';
-import { SubmitAnimateDTO } from '../dto/SubmitAnimateDTO';
+// Removed specific DTO imports in favor of generic action/modal
+import { SubmitActionDTO } from '../dto/SubmitActionDTO';
+import { SubmitModalDTO } from '../dto/SubmitModalDTO';
 import { TaskService } from '../services/taskService';
 import { TaskStoreService } from '../services/store/taskStoreService';
 import { TranslateService } from '../services/translate/translateService';
@@ -239,18 +236,18 @@ export class SubmitController {
     return this.taskService.submitBlend(task, dataUrlList, blendDTO.dimensions);
   }
 
-  // ---------- New image action endpoints ----------
-  async upsample2x(request: FastifyRequest<{ Body: SubmitUpsample2xDTO }>, reply: FastifyReply): Promise<SubmitResultVO> {
+  // Specific image action endpoints removed in favor of generic action/modal
+
+  // ---------- Generic action + modal flow ----------
+  async action(request: FastifyRequest<{ Body: SubmitActionDTO }>, reply: FastifyReply): Promise<SubmitResultVO> {
     const dto = request.body;
     if (!dto.taskId) {
       return SubmitResultVO.fail(ReturnCode.VALIDATION_ERROR, 'taskId cannot be empty');
     }
-    if (!dto.index || dto.index < 1 || dto.index > 4) {
-      return SubmitResultVO.fail(ReturnCode.VALIDATION_ERROR, 'index must be 1~4');
+    if (!dto.customId) {
+      return SubmitResultVO.fail(ReturnCode.VALIDATION_ERROR, 'customId cannot be empty');
     }
-    if (!dto.mode || !['subtle', 'creative'].includes(dto.mode)) {
-      return SubmitResultVO.fail(ReturnCode.VALIDATION_ERROR, 'mode must be subtle or creative');
-    }
+
     const targetTask = await this.taskStoreService.get(dto.taskId);
     if (!targetTask) {
       return SubmitResultVO.fail(ReturnCode.NOT_FOUND, 'related task does not exist or has expired');
@@ -258,207 +255,54 @@ export class SubmitController {
     if (targetTask.status !== TaskStatus.SUCCESS) {
       return SubmitResultVO.fail(ReturnCode.VALIDATION_ERROR, 'related task status error');
     }
+
     const task = this.newTask(dto);
-    task.action = TaskAction.UPSAMPLE_2X;
+    task.action = targetTask.action;
     task.prompt = targetTask.prompt;
     task.promptEn = targetTask.promptEn;
     task.setProperty(TASK_PROPERTY_FINAL_PROMPT, targetTask.getProperty(TASK_PROPERTY_FINAL_PROMPT));
     task.setProperty(TASK_PROPERTY_PROGRESS_MESSAGE_ID, targetTask.getProperty(TASK_PROPERTY_MESSAGE_ID));
     task.setProperty(TASK_PROPERTY_DISCORD_INSTANCE_ID, targetTask.getProperty(TASK_PROPERTY_DISCORD_INSTANCE_ID));
-    task.description = `/up2x ${dto.mode} ${dto.index}`;
+    task.description = `/action ${dto.customId}`;
 
     const messageFlags = targetTask.getProperty(TASK_PROPERTY_FLAGS) || 0;
     const messageId = targetTask.getProperty(TASK_PROPERTY_MESSAGE_ID);
     const messageHash = targetTask.getProperty(TASK_PROPERTY_MESSAGE_HASH);
     task.setProperty(TASK_PROPERTY_REFERENCED_MESSAGE_ID, messageId);
 
-    return this.taskService.submitUpsample2x(task, messageId, messageHash, dto.index, dto.mode, messageFlags);
+    return this.taskService.submitCustomComponent(task, messageId, messageHash, dto.customId, messageFlags);
   }
 
-  async variationStrength(request: FastifyRequest<{ Body: SubmitVariationStrengthDTO }>, reply: FastifyReply): Promise<SubmitResultVO> {
+  async modal(request: FastifyRequest<{ Body: SubmitModalDTO }>, reply: FastifyReply): Promise<SubmitResultVO> {
     const dto = request.body;
     if (!dto.taskId) {
       return SubmitResultVO.fail(ReturnCode.VALIDATION_ERROR, 'taskId cannot be empty');
     }
-    if (!dto.index || dto.index < 1 || dto.index > 4) {
-      return SubmitResultVO.fail(ReturnCode.VALIDATION_ERROR, 'index must be 1~4');
-    }
-    if (!dto.level || !['low', 'high'].includes(dto.level)) {
-      return SubmitResultVO.fail(ReturnCode.VALIDATION_ERROR, 'level must be low or high');
-    }
+
     const targetTask = await this.taskStoreService.get(dto.taskId);
     if (!targetTask) {
       return SubmitResultVO.fail(ReturnCode.NOT_FOUND, 'related task does not exist or has expired');
     }
-    if (targetTask.status !== TaskStatus.SUCCESS) {
-      return SubmitResultVO.fail(ReturnCode.VALIDATION_ERROR, 'related task status error');
-    }
+
     const task = this.newTask(dto);
-    task.action = TaskAction.VARIATION_STRENGTH;
+    task.action = targetTask.action;
     task.prompt = targetTask.prompt;
     task.promptEn = targetTask.promptEn;
-    task.setProperty(TASK_PROPERTY_FINAL_PROMPT, targetTask.getProperty(TASK_PROPERTY_FINAL_PROMPT));
-    task.setProperty(TASK_PROPERTY_PROGRESS_MESSAGE_ID, targetTask.getProperty(TASK_PROPERTY_MESSAGE_ID));
     task.setProperty(TASK_PROPERTY_DISCORD_INSTANCE_ID, targetTask.getProperty(TASK_PROPERTY_DISCORD_INSTANCE_ID));
-    task.description = `/variation ${dto.level} ${dto.index}`;
+    task.description = `/modal ${dto.taskId}`;
 
-    const messageFlags = targetTask.getProperty(TASK_PROPERTY_FLAGS) || 0;
-    const messageId = targetTask.getProperty(TASK_PROPERTY_MESSAGE_ID);
-    const messageHash = targetTask.getProperty(TASK_PROPERTY_MESSAGE_HASH);
-    task.setProperty(TASK_PROPERTY_REFERENCED_MESSAGE_ID, messageId);
-
-    return this.taskService.submitVariationStrength(task, messageId, messageHash, dto.index, dto.level, messageFlags);
-  }
-
-  async pan(request: FastifyRequest<{ Body: SubmitPanDTO }>, reply: FastifyReply): Promise<SubmitResultVO> {
-    const dto = request.body;
-    if (!dto.taskId) {
-      return SubmitResultVO.fail(ReturnCode.VALIDATION_ERROR, 'taskId cannot be empty');
-    }
-    if (!dto.index || dto.index < 1 || dto.index > 4) {
-      return SubmitResultVO.fail(ReturnCode.VALIDATION_ERROR, 'index must be 1~4');
-    }
-    if (!dto.direction || !['left', 'right', 'up', 'down'].includes(dto.direction)) {
-      return SubmitResultVO.fail(ReturnCode.VALIDATION_ERROR, 'direction must be left/right/up/down');
-    }
-    const targetTask = await this.taskStoreService.get(dto.taskId);
-    if (!targetTask) {
-      return SubmitResultVO.fail(ReturnCode.NOT_FOUND, 'related task does not exist or has expired');
-    }
-    if (targetTask.status !== TaskStatus.SUCCESS) {
-      return SubmitResultVO.fail(ReturnCode.VALIDATION_ERROR, 'related task status error');
-    }
-    const task = this.newTask(dto);
-    task.action = TaskAction.PAN;
-    task.prompt = targetTask.prompt;
-    task.promptEn = targetTask.promptEn;
-    task.setProperty(TASK_PROPERTY_FINAL_PROMPT, targetTask.getProperty(TASK_PROPERTY_FINAL_PROMPT));
-    task.setProperty(TASK_PROPERTY_PROGRESS_MESSAGE_ID, targetTask.getProperty(TASK_PROPERTY_MESSAGE_ID));
-    task.setProperty(TASK_PROPERTY_DISCORD_INSTANCE_ID, targetTask.getProperty(TASK_PROPERTY_DISCORD_INSTANCE_ID));
-    task.description = `/pan ${dto.direction.toUpperCase()} ${dto.index}`;
-
-    const messageFlags = targetTask.getProperty(TASK_PROPERTY_FLAGS) || 0;
-    const messageId = targetTask.getProperty(TASK_PROPERTY_MESSAGE_ID);
-    const messageHash = targetTask.getProperty(TASK_PROPERTY_MESSAGE_HASH);
-    task.setProperty(TASK_PROPERTY_REFERENCED_MESSAGE_ID, messageId);
-
-    return this.taskService.submitPan(task, messageId, messageHash, dto.index, dto.direction, messageFlags);
-  }
-
-  async outpaint(request: FastifyRequest<{ Body: SubmitOutpaintDTO }>, reply: FastifyReply): Promise<SubmitResultVO> {
-    const dto = request.body;
-    if (!dto.taskId) {
-      return SubmitResultVO.fail(ReturnCode.VALIDATION_ERROR, 'taskId cannot be empty');
-    }
-    if (!dto.index || dto.index < 1 || dto.index > 4) {
-      return SubmitResultVO.fail(ReturnCode.VALIDATION_ERROR, 'index must be 1~4');
-    }
-    if (dto.percent !== 50 && dto.percent !== 75) {
-      return SubmitResultVO.fail(ReturnCode.VALIDATION_ERROR, 'percent must be 50 or 75');
-    }
-    const targetTask = await this.taskStoreService.get(dto.taskId);
-    if (!targetTask) {
-      return SubmitResultVO.fail(ReturnCode.NOT_FOUND, 'related task does not exist or has expired');
-    }
-    if (targetTask.status !== TaskStatus.SUCCESS) {
-      return SubmitResultVO.fail(ReturnCode.VALIDATION_ERROR, 'related task status error');
-    }
-    const task = this.newTask(dto);
-    task.action = TaskAction.OUTPAINT;
-    task.prompt = targetTask.prompt;
-    task.promptEn = targetTask.promptEn;
-    task.setProperty(TASK_PROPERTY_FINAL_PROMPT, targetTask.getProperty(TASK_PROPERTY_FINAL_PROMPT));
-    task.setProperty(TASK_PROPERTY_PROGRESS_MESSAGE_ID, targetTask.getProperty(TASK_PROPERTY_MESSAGE_ID));
-    task.setProperty(TASK_PROPERTY_DISCORD_INSTANCE_ID, targetTask.getProperty(TASK_PROPERTY_DISCORD_INSTANCE_ID));
-    task.description = `/outpaint ${dto.percent} ${dto.index}`;
-
-    const messageFlags = targetTask.getProperty(TASK_PROPERTY_FLAGS) || 0;
-    const messageId = targetTask.getProperty(TASK_PROPERTY_MESSAGE_ID);
-    const messageHash = targetTask.getProperty(TASK_PROPERTY_MESSAGE_HASH);
-    task.setProperty(TASK_PROPERTY_REFERENCED_MESSAGE_ID, messageId);
-
-    return this.taskService.submitOutpaint(task, messageId, messageHash, dto.index, dto.percent, messageFlags);
-  }
-
-  async animate(request: FastifyRequest<{ Body: SubmitAnimateDTO }>, reply: FastifyReply): Promise<SubmitResultVO> {
-    const dto = request.body;
-    if (!dto.taskId) {
-      return SubmitResultVO.fail(ReturnCode.VALIDATION_ERROR, 'taskId cannot be empty');
-    }
-    if (!dto.index || dto.index < 1 || dto.index > 4) {
-      return SubmitResultVO.fail(ReturnCode.VALIDATION_ERROR, 'index must be 1~4');
-    }
-    if (!dto.quality || !['low', 'high'].includes(dto.quality)) {
-      return SubmitResultVO.fail(ReturnCode.VALIDATION_ERROR, 'quality must be low or high');
-    }
-    const targetTask = await this.taskStoreService.get(dto.taskId);
-    if (!targetTask) {
-      return SubmitResultVO.fail(ReturnCode.NOT_FOUND, 'related task does not exist or has expired');
-    }
-    if (targetTask.status !== TaskStatus.SUCCESS) {
-      return SubmitResultVO.fail(ReturnCode.VALIDATION_ERROR, 'related task status error');
-    }
-    const task = this.newTask(dto);
-    task.action = TaskAction.ANIMATE;
-    task.prompt = targetTask.prompt;
-    task.promptEn = targetTask.promptEn;
-    task.setProperty(TASK_PROPERTY_FINAL_PROMPT, targetTask.getProperty(TASK_PROPERTY_FINAL_PROMPT));
-    task.setProperty(TASK_PROPERTY_PROGRESS_MESSAGE_ID, targetTask.getProperty(TASK_PROPERTY_MESSAGE_ID));
-    task.setProperty(TASK_PROPERTY_DISCORD_INSTANCE_ID, targetTask.getProperty(TASK_PROPERTY_DISCORD_INSTANCE_ID));
-    task.description = `/animate ${dto.quality} ${dto.index}`;
-
-    const messageFlags = targetTask.getProperty(TASK_PROPERTY_FLAGS) || 0;
-    const messageId = targetTask.getProperty(TASK_PROPERTY_MESSAGE_ID);
-    const messageHash = targetTask.getProperty(TASK_PROPERTY_MESSAGE_HASH);
-    task.setProperty(TASK_PROPERTY_REFERENCED_MESSAGE_ID, messageId);
-
-    return this.taskService.submitAnimate(task, messageId, messageHash, dto.index, dto.quality, messageFlags);
-  }
-
-  async inpaint(request: FastifyRequest<{ Body: SubmitInpaintDTO }>, reply: FastifyReply): Promise<SubmitResultVO> {
-    const dto = request.body;
-    if (!dto.taskId) {
-      return SubmitResultVO.fail(ReturnCode.VALIDATION_ERROR, 'taskId cannot be empty');
-    }
-    if (!dto.index || dto.index < 1 || dto.index > 4) {
-      return SubmitResultVO.fail(ReturnCode.VALIDATION_ERROR, 'index must be 1~4');
-    }
-    if (!dto.maskBase64) {
-      return SubmitResultVO.fail(ReturnCode.VALIDATION_ERROR, 'maskBase64 cannot be empty');
-    }
-
-    // Parse mask
     let maskDataUrl;
-    try {
-      const dataUrls = convertBase64Array([dto.maskBase64]);
-      maskDataUrl = dataUrls[0];
-    } catch (e) {
-      return SubmitResultVO.fail(ReturnCode.VALIDATION_ERROR, 'maskBase64 format error');
+    if (dto.maskBase64) {
+      try {
+        const dataUrls = convertBase64Array([dto.maskBase64]);
+        maskDataUrl = dataUrls[0];
+      } catch (e) {
+        return SubmitResultVO.fail(ReturnCode.VALIDATION_ERROR, 'maskBase64 format error');
+      }
     }
 
-    const targetTask = await this.taskStoreService.get(dto.taskId);
-    if (!targetTask) {
-      return SubmitResultVO.fail(ReturnCode.NOT_FOUND, 'related task does not exist or has expired');
-    }
-    if (targetTask.status !== TaskStatus.SUCCESS) {
-      return SubmitResultVO.fail(ReturnCode.VALIDATION_ERROR, 'related task status error');
-    }
-    const task = this.newTask(dto);
-    task.action = TaskAction.INPAINT;
-    task.prompt = targetTask.prompt;
-    task.promptEn = targetTask.promptEn;
-    task.setProperty(TASK_PROPERTY_FINAL_PROMPT, targetTask.getProperty(TASK_PROPERTY_FINAL_PROMPT));
-    task.setProperty(TASK_PROPERTY_PROGRESS_MESSAGE_ID, targetTask.getProperty(TASK_PROPERTY_MESSAGE_ID));
-    task.setProperty(TASK_PROPERTY_DISCORD_INSTANCE_ID, targetTask.getProperty(TASK_PROPERTY_DISCORD_INSTANCE_ID));
-    task.description = `/inpaint ${dto.index}`;
-
-    const messageFlags = targetTask.getProperty(TASK_PROPERTY_FLAGS) || 0;
-    const messageId = targetTask.getProperty(TASK_PROPERTY_MESSAGE_ID);
-    const messageHash = targetTask.getProperty(TASK_PROPERTY_MESSAGE_HASH);
-    task.setProperty(TASK_PROPERTY_REFERENCED_MESSAGE_ID, messageId);
-
-    // Submit inpaint: press button, upload mask, send image message with optional prompt
-    return this.taskService.submitInpaint(task, messageId, messageHash, dto.index, messageFlags, maskDataUrl, dto.prompt);
+    // For now, modal supports inpaint-style follow-ups (mask + optional prompt)
+    return this.taskService.submitModal(task, maskDataUrl, dto.prompt);
   }
 
   private newTask(base: any): Task {
